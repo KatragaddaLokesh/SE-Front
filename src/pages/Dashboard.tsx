@@ -1,4 +1,5 @@
 
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
@@ -124,32 +125,6 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">3</div>
-              <p className="text-xs text-muted-foreground">
-                Due this week
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open Positions</CardTitle>
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">5</div>
-              <p className="text-xs text-muted-foreground">
-                Internal job openings
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -171,13 +146,6 @@ const Dashboard = () => {
               >
                 <CalendarCheck className="mr-2 h-5 w-5" />
                 <span>Request Leave</span>
-              </Link>
-              <Link 
-                to="/dashboard/job-roles" 
-                className="flex items-center p-2 bg-primary/10 rounded-md hover:bg-primary/20 transition-colors"
-              >
-                <Briefcase className="mr-2 h-5 w-5" />
-                <span>View Job Openings</span>
               </Link>
             </CardContent>
           </Card>
@@ -201,28 +169,6 @@ const Dashboard = () => {
                     <p className="text-xs text-muted-foreground">April 5, 2025</p>
                   </div>
                   <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Approved</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-1">
-            <CardHeader>
-              <CardTitle>Upcoming Events</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="border-b pb-2">
-                  <p className="font-medium">Team Meeting</p>
-                  <p className="text-xs text-muted-foreground">Today, 2:00 PM</p>
-                </div>
-                <div className="border-b pb-2">
-                  <p className="font-medium">Project Deadline</p>
-                  <p className="text-xs text-muted-foreground">Apr 25, 2025</p>
-                </div>
-                <div className="border-b pb-2">
-                  <p className="font-medium">Company Offsite</p>
-                  <p className="text-xs text-muted-foreground">May 15, 2025</p>
                 </div>
               </div>
             </CardContent>

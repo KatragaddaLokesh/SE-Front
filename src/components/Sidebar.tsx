@@ -36,14 +36,11 @@ const Sidebar = () => {
     { href: "/dashboard", label: "Dashboard", icon: FileText },
     { href: "/dashboard/attendance", label: "Attendance", icon: Clock },
     { href: "/dashboard/leave-requests", label: "Leave Requests", icon: Calendar },
-    { href: "/dashboard/job-roles", label: "Apply for Jobs", icon: Briefcase },
-    { href: "/dashboard/department-work", label: "Department Work", icon: FileIcon },
   ];
 
   const hrLinks: SidebarLink[] = [
     { href: "/hr-dashboard", label: "Dashboard", icon: FileText },
     { href: "/hr-dashboard/employees", label: "Employees", icon: Users },
-    { href: "/hr-dashboard/recruitment", label: "Recruitment", icon: FilePlus },
     { href: "/hr-dashboard/leave-management", label: "Leave Management", icon: CalendarCheck },
     { href: "/hr-dashboard/payroll", label: "Payroll", icon: ChartBar },
   ];
@@ -128,3 +125,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+

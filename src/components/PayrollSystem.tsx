@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,119 +33,25 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "../context/AuthContext";
 
-// Mock data for payroll
-const MOCK_PAYROLL = [
-  { 
-    id: "1", 
-    employeeName: "John Doe",
-    employeeId: "EMP001",
-    department: "Engineering",
-    position: "Senior Frontend Developer",
-    baseSalary: 120000,
-    bonus: 5000,
-    deductions: 3200,
-    netSalary: 121800,
-    status: "Processed",
-    paymentDate: "2025-04-30",
-    bankAccount: "****4567",
-  },
-  { 
-    id: "2", 
-    employeeName: "Jane Smith",
-    employeeId: "EMP002",
-    department: "Design",
-    position: "UX Designer",
-    baseSalary: 95000,
-    bonus: 2000,
-    deductions: 2100,
-    netSalary: 94900,
-    status: "Processed",
-    paymentDate: "2025-04-30",
-    bankAccount: "****7890",
-  },
-  { 
-    id: "3", 
-    employeeName: "Robert Johnson",
-    employeeId: "EMP003",
-    department: "Engineering",
-    position: "Full Stack Developer",
-    baseSalary: 110000,
-    bonus: 0,
-    deductions: 2800,
-    netSalary: 107200,
-    status: "Pending",
-    paymentDate: "2025-04-30",
-    bankAccount: "****1234",
-  },
-  { 
-    id: "4", 
-    employeeName: "Emily Davis",
-    employeeId: "EMP004",
-    department: "Product",
-    position: "Product Manager",
-    baseSalary: 115000,
-    bonus: 3000,
-    deductions: 3000,
-    netSalary: 115000,
-    status: "Pending",
-    paymentDate: "2025-04-30",
-    bankAccount: "****5678",
-  },
-  { 
-    id: "5", 
-    employeeName: "Michael Wilson",
-    employeeId: "EMP005",
-    department: "Infrastructure",
-    position: "DevOps Engineer",
-    baseSalary: 105000,
-    bonus: 2500,
-    deductions: 2600,
-    netSalary: 104900,
-    status: "Pending",
-    paymentDate: "2025-04-30",
-    bankAccount: "****9012",
-  },
-  { 
-    id: "6", 
-    employeeName: "Amanda Martinez",
-    employeeId: "EMP006",
-    department: "Marketing",
-    position: "Marketing Specialist",
-    baseSalary: 85000,
-    bonus: 1000,
-    deductions: 1800,
-    netSalary: 84200,
-    status: "Pending",
-    paymentDate: "2025-04-30",
-    bankAccount: "****3456",
-  },
-];
-
-// Mock payroll history
-const MOCK_PAYROLL_HISTORY = [
-  {
-    month: "March 2025",
-    totalAmount: 635000,
-    employeeCount: 6,
-    status: "Completed",
-    processedDate: "2025-03-28",
-  },
-  {
-    month: "February 2025",
-    totalAmount: 630000,
-    employeeCount: 6,
-    status: "Completed",
-    processedDate: "2025-02-28",
-  },
-  {
-    month: "January 2025",
-    totalAmount: 625000,
-    employeeCount: 6,
-    status: "Completed",
-    processedDate: "2025-01-30",
-  },
-];
+type PayrollEntry = {
+  _id: string;
+  payrollId: string;
+  employeeId: {
+    _id: string;
+    name: string;
+    department: string;
+    position: string;
+  };
+  basicSalary: number;
+  bonuses: number;
+  deductions: number;
+  netSalary: number;
+  paymentStatus: string;
+  paymentDate: string;
+  createdAt: string;
+};
 
 const formatDate = (dateString: string) => {
   const options: Intl.DateTimeFormatOptions = { 
@@ -165,49 +71,143 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-// Mock departments
-const DEPARTMENTS = ["All", "Engineering", "Design", "Product", "Marketing", "Infrastructure", "Finance", "HR", "Sales"];
-
 const PayrollSystem = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("current");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("All");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedPayroll, setSelectedPayroll] = useState<typeof MOCK_PAYROLL[0] | null>(null);
+  const [selectedPayroll, setSelectedPayroll] = useState<PayrollEntry | null>(null);
   const [processingPayroll, setProcessingPayroll] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [payrolls, setPayrolls] = useState<PayrollEntry[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [totalPayroll, setTotalPayroll] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleRunPayroll = () => {
+  useEffect(() => {
+    fetchPayrolls();
+    fetchDepartments();
+  }, []);
+
+  const fetchPayrolls = async () => {
+    try {
+      const token = localStorage.getItem("hrms_token");
+      const response = await fetch('http://localhost:5000/api/payroll', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch payrolls');
+      }
+
+      const data = await response.json();
+      setPayrolls(data.data);
+      
+      // Calculate total payroll
+      const total = data.data.reduce((sum: number, payroll: PayrollEntry) => sum + payroll.netSalary, 0);
+      setTotalPayroll(total);
+    } catch (error) {
+      console.error('Error fetching payrolls:', error);
+      toast.error('Failed to fetch payroll data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const token = localStorage.getItem("hrms_token");
+      const response = await fetch('http://localhost:5000/api/departments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch departments');
+      }
+
+      const data = await response.json();
+      setDepartments(['All', ...data.data.map((dept: any) => dept.departmentName)]);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
+
+  const handleRunPayroll = async () => {
     setProcessingPayroll(true);
     setProgress(0);
     
-    // Simulate payroll processing
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setProcessingPayroll(false);
-          toast.success("Payroll processed successfully!");
-          return 100;
-        }
-        return prev + 20;
+    try {
+      const token = localStorage.getItem("hrms_token");
+      
+      // Simulate progress while processing
+      const interval = setInterval(() => {
+        setProgress(prev => Math.min(prev + 20, 90));
+      }, 500);
+
+      // Generate payroll for each employee
+      const response = await fetch('http://localhost:5000/api/payroll/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
-    }, 800);
+
+      clearInterval(interval);
+
+      if (!response.ok) {
+        throw new Error('Failed to process payroll');
+      }
+
+      setProgress(100);
+      toast.success("Payroll processed successfully!");
+      fetchPayrolls(); // Refresh payroll data
+    } catch (error) {
+      console.error('Error processing payroll:', error);
+      toast.error('Failed to process payroll');
+    } finally {
+      setProcessingPayroll(false);
+    }
   };
 
-  const handleApprovePayroll = () => {
-    toast.success("Payroll entry approved!");
+  const handleApprovePayroll = async (payrollId: string) => {
+    try {
+      const token = localStorage.getItem("hrms_token");
+      const response = await fetch(`http://localhost:5000/api/payroll/${payrollId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ paymentStatus: 'approved' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve payroll');
+      }
+
+      toast.success("Payroll entry approved!");
+      fetchPayrolls(); // Refresh payroll data
+    } catch (error) {
+      console.error('Error approving payroll:', error);
+      toast.error('Failed to approve payroll');
+    }
   };
 
   // Apply filters to payroll entries
-  const filteredPayroll = MOCK_PAYROLL.filter(entry => {
+  const filteredPayroll = payrolls.filter(entry => {
     const matchesSearch = 
-      entry.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.position.toLowerCase().includes(searchTerm.toLowerCase());
+      entry.employeeId.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.payrollId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.employeeId.position.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDepartment = filterDepartment === "All" || entry.department === filterDepartment;
-    const matchesStatus = filterStatus === "all" || entry.status.toLowerCase() === filterStatus.toLowerCase();
+    const matchesDepartment = filterDepartment === "All" || entry.employeeId.department === filterDepartment;
+    const matchesStatus = filterStatus === "all" || entry.paymentStatus.toLowerCase() === filterStatus.toLowerCase();
     
     return matchesSearch && matchesDepartment && matchesStatus;
   });
@@ -230,9 +230,9 @@ const PayrollSystem = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{formatCurrency(630000)}</div>
+            <div className="text-3xl font-bold">{formatCurrency(totalPayroll)}</div>
             <p className="text-sm text-muted-foreground">
-              April 2025 (estimated)
+              {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </p>
           </CardContent>
         </Card>
@@ -262,7 +262,9 @@ const PayrollSystem = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">2 / 6</div>
+            <div className="text-3xl font-bold">
+              {`${payrolls.filter(p => p.paymentStatus.toLowerCase() === "processed").length} / ${payrolls.length}`}
+            </div>
             <p className="text-sm text-muted-foreground">
               Employees paid this month
             </p>
@@ -446,7 +448,7 @@ const PayrollSystem = () => {
                     <SelectValue placeholder="All Departments" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEPARTMENTS.map((dept) => (
+                    {departments.map((dept) => (
                       <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                     ))}
                   </SelectContent>
@@ -484,30 +486,30 @@ const PayrollSystem = () => {
                     </thead>
                     <tbody>
                       {filteredPayroll.map((entry) => (
-                        <tr key={entry.id} className="border-b hover:bg-muted/50">
+                        <tr key={entry._id} className="border-b hover:bg-muted/50">
                           <td className="py-3 px-4">
                             <div>
-                              <p className="font-medium">{entry.employeeName}</p>
-                              <p className="text-xs text-muted-foreground">{entry.employeeId}</p>
+                              <p className="font-medium">{entry.employeeId.name}</p>
+                              <p className="text-xs text-muted-foreground">{entry.payrollId}</p>
                             </div>
                           </td>
                           <td className="py-3 px-4">
                             <div>
-                              <p>{entry.position}</p>
-                              <p className="text-xs text-muted-foreground">{entry.department}</p>
+                              <p>{entry.employeeId.position}</p>
+                              <p className="text-xs text-muted-foreground">{entry.employeeId.department}</p>
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-right">{formatCurrency(entry.baseSalary)}</td>
-                          <td className="py-3 px-4 text-right">{formatCurrency(entry.bonus)}</td>
+                          <td className="py-3 px-4 text-right">{formatCurrency(entry.basicSalary)}</td>
+                          <td className="py-3 px-4 text-right">{formatCurrency(entry.bonuses)}</td>
                           <td className="py-3 px-4 text-right">{formatCurrency(entry.deductions)}</td>
                           <td className="py-3 px-4 text-right font-medium">{formatCurrency(entry.netSalary)}</td>
                           <td className="py-3 px-4 text-center">
                             <span className={`px-2 py-1 rounded-full text-xs ${
-                              entry.status === "Processed" 
+                              entry.paymentStatus === "Processed" 
                                 ? "bg-green-100 text-green-800" 
                                 : "bg-orange-100 text-orange-800"
                             }`}>
-                              {entry.status}
+                              {entry.paymentStatus}
                             </span>
                           </td>
                           <td className="py-3 px-4">
@@ -530,16 +532,16 @@ const PayrollSystem = () => {
                                   <div className="space-y-6 py-4">
                                     <div className="flex justify-between items-center">
                                       <div>
-                                        <h3 className="text-xl font-bold">{selectedPayroll.employeeName}</h3>
-                                        <p className="text-muted-foreground">{selectedPayroll.position} - {selectedPayroll.department}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Employee ID: {selectedPayroll.employeeId}</p>
+                                        <h3 className="text-xl font-bold">{selectedPayroll.employeeId.name}</h3>
+                                        <p className="text-muted-foreground">{selectedPayroll.employeeId.position} - {selectedPayroll.employeeId.department}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Employee ID: {selectedPayroll.payrollId}</p>
                                       </div>
                                       <span className={`px-2 py-1 rounded-full text-xs ${
-                                        selectedPayroll.status === "Processed" 
+                                        selectedPayroll.paymentStatus === "Processed" 
                                           ? "bg-green-100 text-green-800" 
                                           : "bg-orange-100 text-orange-800"
                                       }`}>
-                                        {selectedPayroll.status}
+                                        {selectedPayroll.paymentStatus}
                                       </span>
                                     </div>
                                     
@@ -549,20 +551,16 @@ const PayrollSystem = () => {
                                           <p className="text-sm font-medium text-muted-foreground">Payment Date</p>
                                           <p className="font-medium">{formatDate(selectedPayroll.paymentDate)}</p>
                                         </div>
-                                        <div>
-                                          <p className="text-sm font-medium text-muted-foreground">Bank Account</p>
-                                          <p className="font-medium">{selectedPayroll.bankAccount}</p>
-                                        </div>
                                       </div>
                                       
                                       <div className="pt-2 border-t">
                                         <div className="flex justify-between items-center mb-2">
                                           <p className="text-sm">Base Salary</p>
-                                          <p className="font-medium">{formatCurrency(selectedPayroll.baseSalary)}</p>
+                                          <p className="font-medium">{formatCurrency(selectedPayroll.basicSalary)}</p>
                                         </div>
                                         <div className="flex justify-between items-center mb-2">
                                           <p className="text-sm">Bonus</p>
-                                          <p className="font-medium">{formatCurrency(selectedPayroll.bonus)}</p>
+                                          <p className="font-medium">{formatCurrency(selectedPayroll.bonuses)}</p>
                                         </div>
                                       </div>
                                       
@@ -589,7 +587,7 @@ const PayrollSystem = () => {
                                       </div>
                                     </div>
                                     
-                                    {selectedPayroll.status === "Pending" && (
+                                    {selectedPayroll.paymentStatus === "Pending" && (
                                       <div className="flex justify-end gap-3">
                                         <Button 
                                           variant="outline"
@@ -599,7 +597,7 @@ const PayrollSystem = () => {
                                           <span>Edit</span>
                                         </Button>
                                         <Button 
-                                          onClick={handleApprovePayroll}
+                                          onClick={() => handleApprovePayroll(selectedPayroll._id)}
                                           className="flex items-center gap-2"
                                         >
                                           <Send className="h-4 w-4" />
@@ -614,7 +612,7 @@ const PayrollSystem = () => {
                                   <DialogClose asChild>
                                     <Button variant="outline">Close</Button>
                                   </DialogClose>
-                                  {selectedPayroll?.status === "Processed" && (
+                                  {selectedPayroll?.paymentStatus === "Processed" && (
                                     <Button className="flex items-center gap-2">
                                       <Download className="h-4 w-4" />
                                       <span>Download Slip</span>
@@ -653,29 +651,7 @@ const PayrollSystem = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {MOCK_PAYROLL_HISTORY.map((history, index) => (
-                      <tr key={index} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-4 font-medium">{history.month}</td>
-                        <td className="py-3 px-4 text-center">{history.employeeCount}</td>
-                        <td className="py-3 px-4 text-right">{formatCurrency(history.totalAmount)}</td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                            {history.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">{formatDate(history.processedDate)}</td>
-                        <td className="py-3 px-4">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="flex items-center gap-1"
-                          >
-                            <FileText className="h-3 w-3" />
-                            <span>Report</span>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                    {/* Add payroll history table rows here */}
                   </tbody>
                 </table>
               </div>
@@ -688,3 +664,4 @@ const PayrollSystem = () => {
 };
 
 export default PayrollSystem;
+

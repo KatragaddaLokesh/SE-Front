@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,10 +39,10 @@ import { Label } from "@/components/ui/label";
 
 type Department = {
   _id: string;
-  name: string;
-  description: string;
+  departmentId: string;
+  departmentName: string;
+  managerId: string | null;
   createdAt: string;
-  updatedAt: string;
 };
 
 type Employee = {
@@ -52,14 +52,18 @@ type Employee = {
   email: string;
   phone: string;
   position: string;
-  departmentId: string;
+  department: {
+    _id: string;
+    departmentId: string;
+    departmentName: string;
+  };
   address: string;
   dob: string;
   salary: number;
   role: string;
-  status: "Active" | "On Leave" | "Terminated";
+  status: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 };
 
 const formatDate = (dateString: string) => {
@@ -139,9 +143,8 @@ const EmployeeManagement = () => {
     }
   };
 
-  const getDepartmentName = (departmentId: string) => {
-    const department = departments.find(dept => dept._id === departmentId);
-    return department ? department.name : 'Unknown Department';
+  const getDepartmentName = (employee: Employee) => {
+    return employee.department?.departmentName || 'Unknown Department';
   };
 
   const fetchEmployees = async () => {
@@ -196,8 +199,15 @@ const EmployeeManagement = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...newEmployee,
+          name: newEmployee.name,
+          email: newEmployee.email,
+          phone: newEmployee.phone,
+          position: newEmployee.position,
+          department: newEmployee.departmentId,
+          address: newEmployee.address,
+          dob: newEmployee.dob,
           salary: Number(newEmployee.salary),
+          role: newEmployee.role,
           password: 'password123' // Default password, should be changed by employee
         }),
       });
@@ -253,7 +263,7 @@ const EmployeeManagement = () => {
           email: selectedEmployee.email,
           phone: selectedEmployee.phone,
           position: selectedEmployee.position,
-          departmentId: selectedEmployee.departmentId,
+          departmentId: selectedEmployee.department._id,
           address: selectedEmployee.address,
           dob: selectedEmployee.dob,
           salary: selectedEmployee.salary,
@@ -284,6 +294,12 @@ const EmployeeManagement = () => {
 
   const handleDelete = async () => {
     if (!selectedEmployee) return;
+
+    // Check if user is HR
+    if (user?.role !== 'hr') {
+      toast.error('Only HR administrators can remove employees');
+      return;
+    }
 
     try {
       setIsActionLoading(true);
@@ -326,7 +342,7 @@ const EmployeeManagement = () => {
       employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.phone.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesDepartment = filterDepartment === "all" || employee.departmentId === filterDepartment;
+    const matchesDepartment = filterDepartment === "all" || employee.department._id === filterDepartment;
     
     return matchesSearch && matchesDepartment;
   });
@@ -377,7 +393,7 @@ const EmployeeManagement = () => {
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
                   {departments.map((dept) => (
-                    <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
+                    <SelectItem key={dept._id} value={dept._id}>{dept.departmentName}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -442,7 +458,7 @@ const EmployeeManagement = () => {
                           </SelectTrigger>
                           <SelectContent>
                             {departments.map((dept) => (
-                              <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
+                              <SelectItem key={dept._id} value={dept._id}>{dept.departmentName}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -531,7 +547,9 @@ const EmployeeManagement = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4">{employee.position}</td>
-                      <td className="py-3 px-4">{getDepartmentName(employee.departmentId)}</td>
+                      <td className="py-3 px-4">
+                        {employee.department?.departmentName || 'Unknown Department'}
+                      </td>
                       <td className="py-3 px-4">{employee.address}</td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-1 rounded-full text-xs ${
@@ -608,7 +626,7 @@ const EmployeeManagement = () => {
                                             <p className="text-sm font-medium text-muted-foreground">Department</p>
                                             <div className="flex items-center mt-1">
                                               <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
-                                              <p>{getDepartmentName(selectedEmployee.departmentId)}</p>
+                                              <p>{getDepartmentName(selectedEmployee)}</p>
                                             </div>
                                           </div>
                                           <div>
@@ -693,15 +711,22 @@ const EmployeeManagement = () => {
                                         <div className="space-y-2">
                                           <label className="text-sm font-medium">Department</label>
                                           <Select 
-                                            defaultValue={selectedEmployee.departmentId}
-                                            onValueChange={(value) => setSelectedEmployee({...selectedEmployee, departmentId: value})}
+                                            defaultValue={selectedEmployee.department._id}
+                                            onValueChange={(value) => setSelectedEmployee({
+                                              ...selectedEmployee, 
+                                              department: {
+                                                ...selectedEmployee.department,
+                                                _id: value,
+                                                departmentName: departments.find(d => d._id === value)?.departmentName || ''
+                                              }
+                                            })}
                                           >
                                             <SelectTrigger>
                                               <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
                                               {departments.map((dept) => (
-                                                <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
+                                                <SelectItem key={dept._id} value={dept._id}>{dept.departmentName}</SelectItem>
                                               ))}
                                             </SelectContent>
                                           </Select>
@@ -738,7 +763,7 @@ const EmployeeManagement = () => {
                                         <label className="text-sm font-medium">Status</label>
                                         <Select 
                                           defaultValue={selectedEmployee.status}
-                                          onValueChange={(value) => setSelectedEmployee({...selectedEmployee, status: value as "Active" | "On Leave" | "Terminated"})}
+                                          onValueChange={(value) => setSelectedEmployee({...selectedEmployee, status: value as string})}
                                         >
                                           <SelectTrigger>
                                             <SelectValue />
@@ -760,7 +785,7 @@ const EmployeeManagement = () => {
                               <DialogClose asChild>
                                 <Button variant="outline">Close</Button>
                               </DialogClose>
-                              {viewMode === "view" ? (
+                              {viewMode === "view" && user?.role === 'hr' ? (
                                 <Button 
                                   variant="destructive"
                                   onClick={handleDelete}
@@ -771,12 +796,14 @@ const EmployeeManagement = () => {
                                   <span>{isActionLoading ? "Deleting..." : "Remove Employee"}</span>
                                 </Button>
                               ) : (
-                                <Button 
-                                  onClick={handleEditSave}
-                                  disabled={isActionLoading}
-                                >
-                                  {isActionLoading ? "Saving..." : "Save Changes"}
-                                </Button>
+                                viewMode === "edit" && (
+                                  <Button 
+                                    onClick={handleEditSave}
+                                    disabled={isActionLoading}
+                                  >
+                                    {isActionLoading ? "Saving..." : "Save Changes"}
+                                  </Button>
+                                )
                               )}
                             </DialogFooter>
                           </DialogContent>
@@ -795,4 +822,3 @@ const EmployeeManagement = () => {
 };
 
 export default EmployeeManagement;
-
