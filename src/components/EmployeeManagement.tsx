@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -186,6 +185,12 @@ const EmployeeManagement = () => {
 
   const handleAddEmployee = async () => {
     try {
+      // Check if user is HR
+      if (user?.role !== 'hr') {
+        toast.error('Only HR administrators can add employees');
+        return;
+      }
+
       setIsActionLoading(true);
       const token = localStorage.getItem("hrms_token");
       if (!token) {
@@ -820,5 +825,4 @@ const EmployeeManagement = () => {
     </div>
   );
 };
-
 export default EmployeeManagement;
